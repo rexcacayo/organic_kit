@@ -503,7 +503,7 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
     pts = [o.matrix_world @ Vector(c) for o in objs for c in o.bound_box]
     lo = Vector([min(p[i] for p in pts) for i in range(3)])
     hi = Vector([max(p[i] for p in pts) for i in range(3)])
-    center, span = (lo + hi) / 2, max((hi - lo).length, 1.0)
+    center, span = (lo + hi) / 2, max((hi - lo).length, 1e-6)   # vale para escenas en mm o en metros
     dirs = {'FRONT': (0, -1, 0), 'BACK': (0, 1, 0), 'RIGHT': (1, 0, 0), 'LEFT': (-1, 0, 0),
             'TOP': (0, 0, 1), 'ISO': (0.8, -1.0, 0.65), 'ISO_BACK': (-0.8, 1.0, 0.65)}
     old = (sc.render.engine, sc.camera, sc.render.resolution_x, sc.render.resolution_y, sc.render.filepath,
@@ -512,6 +512,8 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
     sc.collection.objects.link(cam)
     cam.data.type = 'ORTHO'
     cam.data.ortho_scale = span * 1.05
+    cam.data.clip_start = span * 0.01
+    cam.data.clip_end = span * 10
     sc.camera = cam
     sc.render.engine = 'BLENDER_WORKBENCH'
     sh = sc.display.shading
