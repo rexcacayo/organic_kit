@@ -515,7 +515,11 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
     sc.camera = cam
     sc.render.engine = 'BLENDER_WORKBENCH'
     sh = sc.display.shading
-    sh.light = 'STUDIO'; sh.color_type = 'MATERIAL'; sh.show_cavity = True
+    keep = {k: getattr(sh, k) for k in ('light', 'color_type', 'show_cavity', 'show_shadows', 'show_xray',
+                                         'show_object_outline', 'background_type') if hasattr(sh, k)}
+    sh.light = 'STUDIO'; sh.color_type = 'MATERIAL'; sh.show_cavity = False; sh.show_shadows = False
+    if hasattr(sh, 'show_xray'):
+        sh.show_xray = False
     sc.render.resolution_x = sc.render.resolution_y = size
     sc.render.film_transparent = False
     import os
@@ -525,7 +529,11 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
         for v in views:
             d = Vector(dirs[v]).normalized()
             cam.location = center + d * span * 2
-            cam.rotation_euler = (-d).to_track_quat('-Z', 'Y').to_euler()
+            q = (-d).to_track_quat('-Z', 'Y')
+            if v == 'TOP':                       # desde arriba: delante (-Y) abajo en la imagen
+                from mathutils import Euler
+                q = Euler((0, 0, 0)).to_quaternion()
+            cam.rotation_euler = q.to_euler()
             tmp = os.path.join(tempfile.gettempdir(), f'_ok_{v}.png')
             sc.render.filepath = tmp
             bpy.ops.render.render(write_still=True)
@@ -533,6 +541,11 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
     finally:
         (sc.render.engine, sc.camera, sc.render.resolution_x, sc.render.resolution_y, sc.render.filepath,
          sc.render.film_transparent) = old
+        for k, val in keep.items():
+            try:
+                setattr(sh, k, val)
+            except Exception:
+                pass
         _remove([cam])
     imgs = [bpy.data.images.load(t) for t in tiles]
     w = sum(i.size[0] for i in imgs); h = max(i.size[1] for i in imgs)
