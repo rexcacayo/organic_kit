@@ -499,7 +499,7 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
     """Imagen de la figura (render Workbench, funciona aunque Blender esté minimizado). Con varias
     vistas salen una al lado de otra en el mismo PNG. Devuelve la ruta."""
     sc = bpy.context.scene
-    objs = objs or [o for o in sc.objects if o.type == 'MESH' and o.visible_get()]
+    objs = list(objs or [o for o in sc.objects if o.type == 'MESH' and o.visible_get()])
     pts = [o.matrix_world @ Vector(c) for o in objs for c in o.bound_box]
     lo = Vector([min(p[i] for p in pts) for i in range(3)])
     hi = Vector([max(p[i] for p in pts) for i in range(3)])
@@ -525,6 +525,10 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
     import os
     import tempfile
     tiles = []
+    # solo salen en la foto las piezas pedidas (lo oculto en la vista también se renderiza si no)
+    hidden = [o for o in sc.objects if o not in objs and o is not cam and not o.hide_render]
+    for o in hidden:
+        o.hide_render = True
     try:
         for v in views:
             d = Vector(dirs[v]).normalized()
@@ -546,6 +550,9 @@ def snapshot(path, views=('FRONT', 'ISO'), objs=None, size=900):
                 setattr(sh, k, val)
             except Exception:
                 pass
+        for o in hidden:
+            if o.name in bpy.data.objects:
+                o.hide_render = False
         _remove([cam])
     imgs = [bpy.data.images.load(t) for t in tiles]
     w = sum(i.size[0] for i in imgs); h = max(i.size[1] for i in imgs)
