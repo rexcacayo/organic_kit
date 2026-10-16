@@ -437,10 +437,12 @@ def colorize(obj, color='piel', name=None):
     mname = name or (color if isinstance(color, str) else 'color_%02x%02x%02x' % tuple(int(c * 255) for c in rgba[:3]))
     mat = bpy.data.materials.get(mname) or bpy.data.materials.new(mname)
     mat.diffuse_color = rgba
-    if getattr(mat, 'use_nodes', False) and mat.node_tree:
-        bsdf = mat.node_tree.nodes.get('Principled BSDF')
-        if bsdf:
-            bsdf.inputs['Base Color'].default_value = rgba
+    if mat.node_tree:
+        # por tipo, no por nombre: con Blender en español el nodo no se llama «Principled BSDF»
+        for node in mat.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED':
+                node.inputs[0].default_value = rgba
+    mat.diffuse_color = rgba
     obj.data.materials.clear()
     obj.data.materials.append(mat)
     return obj
